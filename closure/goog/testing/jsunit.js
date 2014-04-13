@@ -25,6 +25,8 @@ goog.provide('goog.testing.jsunit');
 
 goog.require('goog.testing.TestCase');
 goog.require('goog.testing.TestRunner');
+goog.require('goog.labs.rhino');
+goog.require('goog.labs.rhino.Timeout')
 
 
 /**
@@ -66,10 +68,12 @@ goog.define('goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS', 500);
   // Store a reference to the window's timeout so that it can't be overridden
   // by tests.
   /** @type {!Function} */
-  var realTimeout = window.setTimeout;
+  var realTimeout = goog.global.setTimeout;
+
+
 
   // Check for JsUnit's test runner (need to check for >2.2 and <=2.2)
-  if (top['JsUnitTestManager'] || top['jsUnitTestManager']) {
+  if (goog.global['JsUnitTestManager'] || goog.global['jsUnitTestManager']) {
     // Running inside JsUnit so add support code.
     var path = goog.basePath + goog.testing.jsunit.CORE_SCRIPT;
     document.write('<script type="text/javascript" src="' +
@@ -109,8 +113,8 @@ goog.define('goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS', 500);
 
     // Add an error handler to report errors that may occur during
     // initialization of the page.
-    var onerror = window.onerror;
-    window.onerror = function(error, url, line) {
+    var onerror = goog.global.onerror;
+    goog.global.onerror = function(error, url, line) {
       // Call any existing onerror handlers.
       if (onerror) {
         onerror(error, url, line);
@@ -135,23 +139,39 @@ goog.define('goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS', 500);
     // scope. If this code is being parsed by JsTestC, we let it disable the
     // onload handler to avoid running the test in JsTestC.
     if (goog.testing.jsunit.AUTO_RUN_ONLOAD) {
-      var onload = window.onload;
-      window.onload = function(e) {
-        // Call any existing onload handlers.
-        if (onload) {
-          onload(e);
+	var startFunction = function() {
+
+	    // Pull the title from the document if it's present.
+	    var title;
+	    if (goog.global.document) {
+		title = goog.global.document.title;
+	    } else {
+		title = '';
+	    }
+
+	    if (!tr.initialized) {
+		var test = new goog.testing.TestCase(title);
+		test.autoDiscoverTests();
+		tr.initialize(test);
+	    }
+	    tr.execute();
+        };
+
+	if (goog.labs.rhino.isRhino()) {
+	    var timer = new goog.labs.rhino.Timeout();
+	    timer.setTimeout(startFunction);
+	} else {
+	    var onload = goog.global.onload;
+	    goog.global.onload = function(e) {
+            // Call any existing onload handlers.
+            if (onload) {
+              onload(e);
+            }
+	    realTimeout(startFunction, goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS);
+	    goog.global.onload = null;
         }
-        // Wait so that we don't interfere with WebDriver.
-        realTimeout(function() {
-          if (!tr.initialized) {
-            var test = new goog.testing.TestCase(document.title);
-            test.autoDiscoverTests();
-            tr.initialize(test);
-          }
-          tr.execute();
-        }, goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS);
-        window.onload = null;
-      };
+	}
     }
   }
-})();
+}
+)();
