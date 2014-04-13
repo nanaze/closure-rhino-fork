@@ -26,6 +26,9 @@ goog.provide('goog.testing.jsunit');
 goog.require('goog.testing.TestCase');
 goog.require('goog.testing.TestRunner');
 goog.require('goog.labs.rhino');
+goog.require('goog.labs.rhino.stdOut');
+goog.require('goog.labs.rhino.stdErr');
+
 goog.require('goog.labs.rhino.Timeout')
 
 
@@ -139,8 +142,9 @@ goog.define('goog.testing.jsunit.AUTO_RUN_DELAY_IN_MS', 500);
     // scope. If this code is being parsed by JsTestC, we let it disable the
     // onload handler to avoid running the test in JsTestC.
     if (goog.testing.jsunit.AUTO_RUN_ONLOAD) {
-	var startFunction = function() {
 
+	var startFunction = function() {
+	    
 	    // Pull the title from the document if it's present.
 	    var title;
 	    if (goog.global.document) {
